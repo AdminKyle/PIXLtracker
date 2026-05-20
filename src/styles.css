@@ -55,7 +55,12 @@ body {
 .view.active {
   opacity: 1;
   pointer-events: auto;
-  z-index: 20;
+  z-index: 110;
+}
+
+/* Ensure search view stays above other views when active */
+#view-search.active {
+  z-index: 110;
 }
 #view-search {
   background: var(--bg-surface);
