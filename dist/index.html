@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/PIXLtracker/assets/index-C6MTE6r4.js"></script>
-  <link rel="stylesheet" crossorigin href="/PIXLtracker/assets/index-gTRqEmQ6.css">
+  <script type="module" crossorigin src="/PIXLtracker/assets/index-B6Nl59Lu.js"></script>
+  <link rel="stylesheet" crossorigin href="/PIXLtracker/assets/index-6g1fRuZ7.css">
 </head>
 <body>
   <!-- Offline Indicator -->
@@ -89,7 +89,13 @@
         <button id="main-scan-btn" class="btn-scan-large">
           <div class="scan-btn-inner">
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path><line x1="7" y1="12" x2="17" y2="12"></line></svg>
-            <span>TAP TO SCAN</span>
+            <span>SCAN</span>
+          </div>
+        </button>
+        <button id="main-search-btn" class="btn-scan-large secondary-btn">
+          <div class="scan-btn-inner">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <span>SEARCH</span>
           </div>
         </button>
       </div>
@@ -127,7 +133,20 @@
         </div>
       </div>
     </div>
+  
+  <!-- Search View -->
+  <div id="view-search" class="view hidden">
+    <header class="scanner-header">
+      <button id="close-search-btn" class="btn-text-close">Cancel</button>
+      <span class="scanner-title">Search Flavours</span>
+      <div style="width: 60px;"></div>
+    </header>
+    <div class="search-container">
+      <input type="text" id="search-input" class="search-input" placeholder="Enter flavour name..." />
+      <div id="search-results" class="search-results-list"></div>
+    </div>
   </div>
+
 
 </body>
 </html>

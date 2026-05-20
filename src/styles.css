@@ -49,12 +49,18 @@ body {
   pointer-events: none;
   transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 10;
+
 }
 
 .view.active {
   opacity: 1;
   pointer-events: auto;
   z-index: 20;
+}
+#view-search {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  z-index: 110;
 }
 
 .hidden {
