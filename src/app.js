@@ -60,10 +60,14 @@ async function handleBarcodeDetected(barcode) {
   // Await API response before transitioning
   const status = await scanApi(barcode, currentSession.username);
 
-  // Transition away and cleanup scanner memory
-  stopScanner();
+  // Transition away FIRST for immediate perceived speed
   UI.hideProcessingOverlay();
   UI.switchView('dashboard');
+  
+  // Clean up scanner memory asynchronously so UI thread doesn't lock
+  setTimeout(() => {
+    stopScanner();
+  }, 50);
 
   if (status === 'success') {
     sessionScanCount++;

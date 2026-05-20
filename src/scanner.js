@@ -149,8 +149,13 @@ function validateAndHandleDetection(barcode) {
     // PASS: Validated
     scanLock = true;
     
+    // CRITICAL FIX: Stop ZXing loop before pausing video to prevent internal crashes
+    if (zxingReader) {
+      zxingReader.reset();
+    }
+    
     // Visually freeze the frame (Processing state UX)
-    videoEl.pause();
+    try { videoEl.pause(); } catch(e) {}
     
     // Send to app layer immediately
     onDetectedCallback(barcode);
@@ -168,18 +173,22 @@ export function stopScanner() {
     rAF_ID = null;
   }
   
-  if (stream) {
-    const tracks = stream.getTracks();
-    tracks.forEach(track => {
-      track.stop();
-    });
-    stream = null;
-  }
-  
-  videoEl.srcObject = null;
-  
-  // Cleanup ZXing completely to prevent memory leaks
+  // Clean up ZXing completely to prevent memory leaks
   if (zxingReader) {
     zxingReader.reset();
+  }
+
+  const currentStream = stream;
+  stream = null;
+  videoEl.srcObject = null;
+  
+  if (currentStream) {
+    const tracks = currentStream.getTracks();
+    // Stop tracks asynchronously to prevent Safari UI thread lockups
+    setTimeout(() => {
+      tracks.forEach(track => {
+        try { track.stop(); } catch(e) {}
+      });
+    }, 50);
   }
 }
