@@ -1,4 +1,3 @@
-// Trigger CI workflow
 import { initAuth, logout } from './auth.js';
 import { UI } from './ui.js';
 import { scanApi } from './api.js';
