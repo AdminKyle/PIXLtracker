@@ -3,24 +3,17 @@ import { BrowserMultiFormatReader } from '@zxing/browser';
 const videoEl = document.getElementById('scanner-video');
 let stream = null;
 let scanLock = false;
+let scannerInterval = null;
 let zxingReader = null;
 let useNativeDetector = false;
 let nativeDetector = null;
-let rAF_ID = null;
-let isVisible = true;
 let isScanningActive = false;
 let onDetectedCallback = null;
 
-// Validation state
-let lastReadBarcode = null;
-let consecutiveReads = 0;
-const REQUIRED_CONSECUTIVE_READS = 1; // Prioritize high-speed single-frame sweeps over strict multi-frame validation
-
-// Handle visibility changes (Camera lifecycle management)
+// Camera lifecycle management
 document.addEventListener('visibilitychange', () => {
   const visible = document.visibilityState === 'visible';
   if (!visible && isScanningActive) {
-    // Temporarily halt hardware, but KEEP isScanningActive = true so we know to resume
     stopScannerHardwareOnly();
   } else if (visible && isScanningActive && !stream) {
     startScanner(onDetectedCallback);
@@ -32,12 +25,12 @@ export async function initScanner(onDetected) {
     try {
       const formats = await window.BarcodeDetector.getSupportedFormats();
       if (formats.length > 0) {
-        // Use default configuration (all supported formats) to ensure test barcodes/QRs work
-        nativeDetector = new window.BarcodeDetector();
+        // V1 Explicit format mapping. Apple Webkit breaks with empty format arrays.
+        nativeDetector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'qr_code'] });
         useNativeDetector = true;
       }
     } catch (e) {
-      console.warn("Native BarcodeDetector init failed, falling back to ZXing", e);
+      console.warn("Native init failed", e);
     }
   }
 
@@ -46,8 +39,8 @@ export async function initScanner(onDetected) {
   }
 
   document.getElementById('close-scanner-btn').addEventListener('click', () => {
-    stopScanner();
     isScanningActive = false;
+    stopScannerHardwareOnly();
     onDetected(null);
   });
 }
@@ -56,136 +49,78 @@ export async function startScanner(onDetected) {
   scanLock = false;
   isScanningActive = true;
   onDetectedCallback = onDetected;
-  lastReadBarcode = null;
-  consecutiveReads = 0;
 
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { 
-        facingMode: 'environment', 
-        width: { ideal: 1280 }, 
-        height: { ideal: 720 }
-      }
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
     });
     
     videoEl.srcObject = stream;
     videoEl.setAttribute('playsinline', 'true');
     
-    if (videoEl.readyState >= 2) {
-      videoEl.play();
-    } else {
-      await new Promise((resolve) => {
-        videoEl.onloadedmetadata = () => {
-          videoEl.play();
-          resolve();
-        };
-      });
-    }
+    await new Promise((resolve) => {
+      videoEl.onloadedmetadata = () => {
+        videoEl.play().then(resolve).catch(resolve);
+      };
+      if (videoEl.readyState >= 1) resolve();
+    });
 
     if (useNativeDetector) {
-      scanLoopNative();
+      startNativeDetection();
     } else {
       startZXingDetection();
     }
   } catch (error) {
-    console.error("Camera access failed", error);
     isScanningActive = false;
-    
-    // Better Error Recovery based on type
-    if (error.name === 'NotAllowedError') {
-      alert("Camera permission denied. Please enable in browser settings.");
-    } else {
-      alert("Camera unavailable or blocked.");
-    }
+    alert("Camera unavailable. Check permissions.");
     onDetected(null);
   }
 }
 
-// Throttled native scanning loop for performance
-let lastFrameTime = 0;
-const SCAN_INTERVAL_MS = 100; // ~10fps (Performance Mode)
-
-async function scanLoopNative(timestamp) {
-  if (!isScanningActive || scanLock) return;
-
-  if (timestamp - lastFrameTime >= SCAN_INTERVAL_MS) {
-    lastFrameTime = timestamp;
-    // iOS Safari WebRTC streams often stay at readyState 2 (HAVE_CURRENT_DATA) 
-    // and never reach 4 (HAVE_ENOUGH_DATA). videoWidth is the safest check.
-    if (videoEl.videoWidth > 0 && !videoEl.paused) {
-      try {
-        const barcodes = await nativeDetector.detect(videoEl);
-        if (barcodes.length > 0) {
-          validateAndHandleDetection(barcodes[0].rawValue);
-        }
-      } catch (e) {
-        console.error("Native detection error", e);
+function startNativeDetection() {
+  if (scannerInterval) clearInterval(scannerInterval);
+  // Revert strictly to V1 interval logic. 100% reliable detection loop.
+  scannerInterval = setInterval(async () => {
+    if (scanLock || !videoEl.videoWidth) return;
+    try {
+      const barcodes = await nativeDetector.detect(videoEl);
+      if (barcodes.length > 0) {
+        handleDetection(barcodes[0].rawValue);
       }
+    } catch (e) {
+      // Ignore frame errors
     }
-  }
-  
-  if (isScanningActive && !scanLock) {
-    rAF_ID = requestAnimationFrame(scanLoopNative);
-  }
+  }, 100);
 }
 
 function startZXingDetection() {
-  // ZXing handles its own internal loop, but we can manage validation inside its callback
   zxingReader.decodeFromVideoElement(videoEl, (result, err) => {
     if (scanLock || !isScanningActive) return;
     if (result) {
-      validateAndHandleDetection(result.getText());
+      handleDetection(result.getText());
     }
   });
 }
 
-function validateAndHandleDetection(barcode) {
+function handleDetection(barcode) {
   if (scanLock) return;
+  scanLock = true;
   
-  if (!barcode) return;
-
-  // Intelligent Scan Validation
-  if (barcode === lastReadBarcode) {
-    consecutiveReads++;
-  } else {
-    lastReadBarcode = barcode;
-    consecutiveReads = 1;
-  }
-
-  if (consecutiveReads >= REQUIRED_CONSECUTIVE_READS) {
-    // PASS: Validated
-    scanLock = true;
-    
-    // CRITICAL FIX: Stop ZXing loop before pausing video to prevent internal crashes
-    if (zxingReader) {
-      zxingReader.reset();
-    }
-    
-    // Visually freeze the frame (Processing state UX)
-    try { videoEl.pause(); } catch(e) {}
-    
-    // Send to app layer immediately
-    onDetectedCallback(barcode);
-    
-    // Note: Do NOT stop streams immediately here. App layer will handle the processing state
-    // and call stopScanner() when returning to dashboard.
-  }
+  // Freeze frame visually
+  try { videoEl.pause(); } catch(e) {}
+  
+  onDetectedCallback(barcode);
 }
 
 export function stopScanner() {
-  isScanningActive = false; // Intentionally terminating session
+  isScanningActive = false;
   stopScannerHardwareOnly();
 }
 
 function stopScannerHardwareOnly() {
-  if (rAF_ID) {
-    cancelAnimationFrame(rAF_ID);
-    rAF_ID = null;
-  }
-  
-  // Clean up ZXing completely to prevent memory leaks
-  if (zxingReader) {
-    zxingReader.reset();
+  if (scannerInterval) {
+    clearInterval(scannerInterval);
+    scannerInterval = null;
   }
 
   const currentStream = stream;
