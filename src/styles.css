@@ -55,17 +55,25 @@ body {
 .view.active {
   opacity: 1;
   pointer-events: auto;
-  z-index: 110;
+  z-index: 200;
 }
 
 /* Ensure search view stays above other views when active */
 #view-search.active {
-  z-index: 110;
+  z-index: 210;
 }
+
 #view-search {
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  z-index: 110;
+  background: #ffffff;
+  color: #000000;
+  z-index: 200;
+}
+
+/* Adjust input inside search view */
+#view-search .search-input {
+  background: #ffffff;
+  color: #000000;
+  border-color: #cccccc;
 }
 
 .hidden {
