@@ -57,33 +57,38 @@ async function handleBarcodeDetected(barcode) {
     return;
   }
 
-  // Await API response before transitioning
-  const status = await scanApi(barcode, currentSession.username);
+  // Hold the UI for exactly 350ms to provide a satisfying visual "scan lock" effect
+  await new Promise(r => setTimeout(r, 350));
 
-  // Transition away FIRST for immediate perceived speed
+  // Transition away IMMEDIATELY for zero-friction perceived speed
   UI.hideProcessingOverlay();
   UI.switchView('dashboard');
   
-  // Clean up scanner memory asynchronously so UI thread doesn't lock
   setTimeout(() => {
     stopScanner();
   }, 50);
 
-  if (status === 'success') {
-    sessionScanCount++;
-    UI.updateSessionCount(sessionScanCount);
-    UI.haptic('success');
-    UI.showFeedback('success', `Scanned: ${barcode}`);
-  } else if (status === 'not_found') {
-    UI.haptic('error');
-    UI.showFeedback('error', 'Product Not Found');
-  } else if (status === 'timeout') {
-    UI.haptic('error');
-    UI.showFeedback('error', 'Request Timed Out');
-  } else {
-    UI.haptic('error');
-    UI.showFeedback('error', 'Network Error');
-  }
+  // Optimistic UI Update: Assume success immediately so the user can keep moving
+  sessionScanCount++;
+  UI.updateSessionCount(sessionScanCount);
+
+  // Fire API request in the background
+  scanApi(barcode, currentSession.username).then(status => {
+    if (status === 'success') {
+      UI.haptic('success');
+      UI.showFeedback('success', `Logged: ${barcode}`);
+    } else {
+      // Revert optimistic update on failure
+      sessionScanCount--;
+      UI.updateSessionCount(sessionScanCount);
+      
+      UI.haptic('error');
+      let errorMsg = 'Network Error';
+      if (status === 'not_found') errorMsg = 'Product Not Found';
+      if (status === 'timeout') errorMsg = 'Request Timed Out';
+      UI.showFeedback('error', `Failed: ${barcode} (${errorMsg})`);
+    }
+  });
 }
 
 function setupEventHandlers() {
