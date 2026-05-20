@@ -14,7 +14,7 @@ let onDetectedCallback = null;
 // Validation state
 let lastReadBarcode = null;
 let consecutiveReads = 0;
-const REQUIRED_CONSECUTIVE_READS = 2; // Need 2 same reads to prevent phantom scans
+const REQUIRED_CONSECUTIVE_READS = 1; // Prioritize high-speed single-frame sweeps over strict multi-frame validation
 
 // Handle visibility changes (Camera lifecycle management)
 document.addEventListener('visibilitychange', () => {
