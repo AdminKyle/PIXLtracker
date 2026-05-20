@@ -58,8 +58,16 @@ export async function fetchProducts() {
     const response = await fetch(url, { method: 'GET', mode: 'cors', signal: controller.signal });
     clearTimeout(timeoutId);
     const data = await response.json();
-    // Expect { products: [ { name: "...", barcode: "..." }, ... ] }
-    if (data.products) return data.products;
+    
+    // Map product_name to name and filter out empty rows
+    if (data.products) {
+      return data.products
+        .filter(p => p.barcode && p.product_name)
+        .map(p => ({
+          barcode: String(p.barcode),
+          name: String(p.product_name)
+        }));
+    }
     return [];
   } catch (error) {
     clearTimeout(timeoutId);
