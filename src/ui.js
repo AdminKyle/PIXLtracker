@@ -2,7 +2,8 @@ export const UI = {
   views: {
     login: document.getElementById('view-login'),
     dashboard: document.getElementById('view-dashboard'),
-    scanner: document.getElementById('view-scanner')
+    scanner: document.getElementById('view-scanner'),
+    search: document.getElementById('view-search')
   },
   
   switchView(viewName) {
@@ -64,10 +65,38 @@ export const UI = {
     }, 3500);
   },
 
-  setOfflineIndicator(isOffline) {
-    const el = document.getElementById('offline-indicator');
-    if (isOffline) el.classList.remove('hidden');
-    else el.classList.add('hidden');
+  showSearchResults(results) {
+    const resultsContainer = document.getElementById('search-results');
+    resultsContainer.innerHTML = '';
+    if (results.length === 0) {
+      const empty = document.createElement('div');
+      empty.textContent = 'No flavours found';
+      empty.className = 'search-item';
+      resultsContainer.appendChild(empty);
+      return;
+    }
+    results.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'search-item';
+      div.dataset.barcode = item.barcode;
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'search-item-name';
+      nameSpan.textContent = item.name;
+      const barcodeSpan = document.createElement('span');
+      barcodeSpan.className = 'search-item-barcode';
+      barcodeSpan.textContent = item.barcode;
+      div.appendChild(nameSpan);
+      div.appendChild(barcodeSpan);
+      div.addEventListener('click', () => {
+        // Simulate barcode detection
+        UI.switchView('dashboard');
+        // Call the globally defined handleBarcodeDetected (available via window)
+        if (window.handleBarcodeDetected) {
+          window.handleBarcodeDetected(item.barcode);
+        }
+      });
+      resultsContainer.appendChild(div);
+    });
   },
 
   showInstallPrompt(deferredPrompt) {

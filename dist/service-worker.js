@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pixl-tracker-v4';
+const CACHE_NAME = 'pixl-tracker-v5';
 const ASSETS_TO_CACHE = [
   '/PIXLtracker/',
   '/PIXLtracker/index.html',

@@ -94,10 +94,48 @@ async function handleBarcodeDetected(barcode) {
 function setupEventHandlers() {
   document.getElementById('logout-btn').addEventListener('click', logout);
 
+  // Scan button opens scanner view
   document.getElementById('main-scan-btn').addEventListener('click', () => {
     UI.switchView('scanner');
     startScanner(handleBarcodeDetected);
   });
+
+  // Search button opens search view
+  const searchBtn = document.getElementById('main-search-btn');
+  if (searchBtn) {
+    searchBtn.addEventListener('click', () => {
+      UI.switchView('search');
+      // Reset input and show all results initially
+      const input = document.getElementById('search-input');
+      if (input) input.value = '';
+      UI.showSearchResults([]);
+    });
+  }
+
+  // Close search view
+  const closeSearchBtn = document.getElementById('close-search-btn');
+  if (closeSearchBtn) {
+    closeSearchBtn.addEventListener('click', () => {
+      UI.switchView('dashboard');
+    });
+  }
+
+  // Search input handling with static flavour data
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) {
+    const flavourData = [
+      { name: 'Classic Mint', barcode: '1234567890123' },
+      { name: 'Cool Breeze', barcode: '2345678901234' },
+      { name: 'Fruit Blast', barcode: '3456789012345' },
+      { name: 'Tropical Twist', barcode: '4567890123456' },
+      { name: 'Vanilla Sky', barcode: '5678901234567' }
+    ];
+    searchInput.addEventListener('input', () => {
+      const term = searchInput.value.toLowerCase();
+      const filtered = flavourData.filter(f => f.name.toLowerCase().includes(term));
+      UI.showSearchResults(filtered);
+    });
+  }
 }
 
 async function initApp() {
