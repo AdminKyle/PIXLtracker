@@ -18,11 +18,11 @@ const REQUIRED_CONSECUTIVE_READS = 1; // Prioritize high-speed single-frame swee
 
 // Handle visibility changes (Camera lifecycle management)
 document.addEventListener('visibilitychange', () => {
-  isVisible = document.visibilityState === 'visible';
-  if (!isVisible && isScanningActive) {
-    stopScanner();
-  } else if (isVisible && isScanningActive && !stream) {
-    // Resume scanning if it was active
+  const visible = document.visibilityState === 'visible';
+  if (!visible && isScanningActive) {
+    // Temporarily halt hardware, but KEEP isScanningActive = true so we know to resume
+    stopScannerHardwareOnly();
+  } else if (visible && isScanningActive && !stream) {
     startScanner(onDetectedCallback);
   }
 });
@@ -69,12 +69,18 @@ export async function startScanner(onDetected) {
     });
     
     videoEl.srcObject = stream;
-    await new Promise((resolve) => {
-      videoEl.onloadedmetadata = () => {
-        videoEl.play();
-        resolve();
-      };
-    });
+    videoEl.setAttribute('playsinline', 'true');
+    
+    if (videoEl.readyState >= 2) {
+      videoEl.play();
+    } else {
+      await new Promise((resolve) => {
+        videoEl.onloadedmetadata = () => {
+          videoEl.play();
+          resolve();
+        };
+      });
+    }
 
     if (useNativeDetector) {
       scanLoopNative();
@@ -104,7 +110,9 @@ async function scanLoopNative(timestamp) {
 
   if (timestamp - lastFrameTime >= SCAN_INTERVAL_MS) {
     lastFrameTime = timestamp;
-    if (videoEl.readyState === videoEl.HAVE_ENOUGH_DATA) {
+    // iOS Safari WebRTC streams often stay at readyState 2 (HAVE_CURRENT_DATA) 
+    // and never reach 4 (HAVE_ENOUGH_DATA). videoWidth is the safest check.
+    if (videoEl.videoWidth > 0 && !videoEl.paused) {
       try {
         const barcodes = await nativeDetector.detect(videoEl);
         if (barcodes.length > 0) {
@@ -166,8 +174,11 @@ function validateAndHandleDetection(barcode) {
 }
 
 export function stopScanner() {
-  isScanningActive = false;
-  
+  isScanningActive = false; // Intentionally terminating session
+  stopScannerHardwareOnly();
+}
+
+function stopScannerHardwareOnly() {
   if (rAF_ID) {
     cancelAnimationFrame(rAF_ID);
     rAF_ID = null;
@@ -184,7 +195,6 @@ export function stopScanner() {
   
   if (currentStream) {
     const tracks = currentStream.getTracks();
-    // Stop tracks asynchronously to prevent Safari UI thread lockups
     setTimeout(() => {
       tracks.forEach(track => {
         try { track.stop(); } catch(e) {}
