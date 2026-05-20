@@ -1,5 +1,15 @@
 name: gh-pages
 
+# Permissions needed for the gh-pages deployment action
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Opt‑in to Node.js 24 for all JavaScript actions (pre‑emptive compatibility)
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 on:
   push:
     branches: [ main ]
@@ -28,7 +38,7 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
-          github_token: ${{ secrets.DEPLOY_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           publish_branch: gh-pages
           force_orphan: true
