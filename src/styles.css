@@ -64,16 +64,9 @@ body {
 }
 
 #view-search {
-  background: #ffffff;
-  color: #000000;
+  background: var(--bg-base);
+  color: var(--text-primary);
   z-index: 200;
-}
-
-/* Adjust input inside search view */
-#view-search .search-input {
-  background: #ffffff;
-  color: #000000;
-  border-color: #cccccc;
 }
 
 .hidden {
