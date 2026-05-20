@@ -48,3 +48,22 @@ export async function scanApi(barcode, username) {
     return 'network_error';
   }
 }
+
+export async function fetchProducts() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  try {
+    const url = `${API_URL}?action=getProducts`;
+    const response = await fetch(url, { method: 'GET', mode: 'cors', signal: controller.signal });
+    clearTimeout(timeoutId);
+    const data = await response.json();
+    // Expect { products: [ { name: "...", barcode: "..." }, ... ] }
+    if (data.products) return data.products;
+    return [];
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.error('Failed to fetch products:', error);
+    return [];
+  }
+}

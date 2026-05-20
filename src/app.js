@@ -1,11 +1,12 @@
 import { initAuth, logout } from './auth.js';
 import { UI } from './ui.js';
-import { scanApi } from './api.js';
+import { scanApi, fetchProducts } from './api.js';
 import { initScanner, startScanner, stopScanner } from './scanner.js';
 
 let currentSession = null;
 let sessionScanCount = 0;
 let deferredInstallPrompt = null;
+let flavourData = []; // Store fetched products here
 
 // PWA Install Handling
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -35,6 +36,13 @@ function handleLoginSuccess(sessionData) {
   if (deferredInstallPrompt) {
     setTimeout(() => UI.showInstallPrompt(deferredInstallPrompt), 2000);
   }
+  
+  // Fetch products in the background after login
+  fetchProducts().then(products => {
+    if (products && products.length > 0) {
+      flavourData = products;
+    }
+  });
 }
 
 async function handleBarcodeDetected(barcode) {
@@ -91,6 +99,9 @@ async function handleBarcodeDetected(barcode) {
   });
 }
 
+// Expose handleBarcodeDetected to window so ui.js can call it from search results
+window.handleBarcodeDetected = handleBarcodeDetected;
+
 function setupEventHandlers() {
   document.getElementById('logout-btn').addEventListener('click', logout);
 
@@ -108,7 +119,7 @@ function setupEventHandlers() {
       // Reset input and show all results initially
       const input = document.getElementById('search-input');
       if (input) input.value = '';
-      UI.showSearchResults([]);
+      UI.showSearchResults(flavourData);
     });
   }
 
@@ -120,19 +131,15 @@ function setupEventHandlers() {
     });
   }
 
-  // Search input handling with static flavour data
+  // Search input handling with dynamic flavour data
   const searchInput = document.getElementById('search-input');
   if (searchInput) {
-    const flavourData = [
-      { name: 'Classic Mint', barcode: '1234567890123' },
-      { name: 'Cool Breeze', barcode: '2345678901234' },
-      { name: 'Fruit Blast', barcode: '3456789012345' },
-      { name: 'Tropical Twist', barcode: '4567890123456' },
-      { name: 'Vanilla Sky', barcode: '5678901234567' }
-    ];
     searchInput.addEventListener('input', () => {
       const term = searchInput.value.toLowerCase();
-      const filtered = flavourData.filter(f => f.name.toLowerCase().includes(term));
+      const filtered = flavourData.filter(f => 
+        (f.name && f.name.toLowerCase().includes(term)) || 
+        (f.barcode && f.barcode.toLowerCase().includes(term))
+      );
       UI.showSearchResults(filtered);
     });
   }
