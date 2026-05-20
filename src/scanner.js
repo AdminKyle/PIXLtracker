@@ -32,7 +32,8 @@ export async function initScanner(onDetected) {
     try {
       const formats = await window.BarcodeDetector.getSupportedFormats();
       if (formats.length > 0) {
-        nativeDetector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] });
+        // Use default configuration (all supported formats) to ensure test barcodes/QRs work
+        nativeDetector = new window.BarcodeDetector();
         useNativeDetector = true;
       }
     } catch (e) {
@@ -63,8 +64,7 @@ export async function startScanner(onDetected) {
       video: { 
         facingMode: 'environment', 
         width: { ideal: 1280 }, 
-        height: { ideal: 720 },
-        advanced: [{ focusMode: 'continuous' }] // Mobile specific constraint
+        height: { ideal: 720 }
       }
     });
     
@@ -142,8 +142,7 @@ function startZXingDetection() {
 function validateAndHandleDetection(barcode) {
   if (scanLock) return;
   
-  // Basic validation rules
-  if (!barcode || barcode.length < 6) return;
+  if (!barcode) return;
 
   // Intelligent Scan Validation
   if (barcode === lastReadBarcode) {
