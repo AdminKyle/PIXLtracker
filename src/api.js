@@ -1,7 +1,7 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbyJWl9vhWnAgiP0iaHN1Uve7NjHTkai0VX3_Bujs3II0jHorn6tC2dEYS2dZATvUzH8/exec';
-const TIMEOUT_MS = 8000; // 8 seconds max wait
+const TIMEOUT_MS = 15000; // 15 seconds max wait to accommodate Google Apps Script concurrency locks
 
-export async function loginApi(username, pin) {
+export async function loginApi(username, pin, retryCount = 1) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
   
@@ -9,9 +9,18 @@ export async function loginApi(username, pin) {
     const url = `${API_URL}?action=login&username=${encodeURIComponent(username)}&pin=${encodeURIComponent(pin)}`;
     const response = await fetch(url, { method: 'GET', mode: 'cors', signal: controller.signal });
     clearTimeout(timeoutId);
+    
+    // Attempt to parse JSON. If Apps Script returns an HTML error (e.g. concurrency limit), this will throw.
     return await response.json();
   } catch (error) {
     clearTimeout(timeoutId);
+    
+    // If we haven't exhausted retries and it wasn't a strict timeout, try again
+    if (retryCount > 0 && error.name !== 'AbortError') {
+      await new Promise(r => setTimeout(r, 1000)); // wait 1s before retry
+      return loginApi(username, pin, retryCount - 1);
+    }
+    
     if (error.name === 'AbortError') return { success: false, error: "timeout" };
     return { success: false, error: "network" };
   }

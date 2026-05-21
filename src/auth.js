@@ -51,6 +51,10 @@ export function initAuth(onLoginSuccess) {
       localStorage.setItem('pixl_session', JSON.stringify(sessionData));
       onLoginSuccess(sessionData);
     } else {
+      let msg = 'Invalid credentials';
+      if (result && result.error === 'timeout') msg = 'Server busy. Try again.';
+      if (result && result.error === 'network') msg = 'Network error or Server busy.';
+      errorMsg.textContent = msg;
       errorMsg.classList.remove('hidden');
     }
   });
