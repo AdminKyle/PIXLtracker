@@ -46,11 +46,15 @@ export async function initScanner(onDetected) {
 }
 
 export async function startScanner(onDetected) {
-  scanLock = false;
+  scanLock = true; // Lock initially to prevent old frames from being scanned
   isScanningActive = true;
   onDetectedCallback = onDetected;
 
   try {
+    // Force clear any old frozen frame from the video element
+    videoEl.srcObject = null;
+    videoEl.src = '';
+
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
     });
@@ -64,6 +68,8 @@ export async function startScanner(onDetected) {
       };
       if (videoEl.readyState >= 1) resolve();
     });
+
+    scanLock = false; // Safe to unlock now that live video is streaming
 
     if (useNativeDetector) {
       startNativeDetection();
@@ -122,10 +128,15 @@ function stopScannerHardwareOnly() {
     clearInterval(scannerInterval);
     scannerInterval = null;
   }
+  
+  if (zxingReader) {
+    zxingReader.reset();
+  }
 
   const currentStream = stream;
   stream = null;
   videoEl.srcObject = null;
+  videoEl.src = '';
   
   if (currentStream) {
     const tracks = currentStream.getTracks();
